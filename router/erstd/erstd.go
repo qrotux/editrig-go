@@ -1,4 +1,8 @@
-// Package erstd mounts an editrig.Handler on net/http's ServeMux.
+// Package erstd mounts an editrig.Handler on net/http's ServeMux in the
+// default URL shape. It is a reference mount, not the canonical one: an
+// application whose client expects other paths, or whose writes need their
+// own wrapping, calls the Handler methods from its own routes instead (see
+// README, Wiring).
 package erstd
 
 import (
@@ -9,7 +13,8 @@ import (
 
 // Register mounts GET base/{name}/schema, GET base/{name}/options/{field},
 // GET base/{name}/{id}, POST base/{name}, PATCH base/{name}/{id} and
-// DELETE base/{name}/{id}; guard may be nil. Requires Go 1.22 patterns.
+// DELETE base/{name}/{id}; guard may be nil and wraps every route alike.
+// Requires Go 1.22 patterns.
 func Register(mux *http.ServeMux, base string, guard func(http.Handler) http.Handler, h *editrig.Handler) {
 	wrap := func(f func(http.ResponseWriter, *http.Request)) http.Handler {
 		var hh http.Handler = http.HandlerFunc(f)

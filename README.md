@@ -41,7 +41,7 @@ r := chi.NewRouter()
 erchi.Register(r, "/api/admin/entities", adminGuard, h)
 ```
 
-`erstd.Register(mux, "/api/admin/entities", adminGuard, h)` does the same on an `*http.ServeMux` (Go 1.22 patterns). Both mount six routes under `base`:
+`erstd.Register(mux, "/api/admin/entities", adminGuard, h)` does the same on an `*http.ServeMux` (Go 1.22 patterns). Both are **reference mounts for the default URL shape**, six routes under `base`:
 
 | method | path | handler |
 |---|---|---|
@@ -52,7 +52,37 @@ erchi.Register(r, "/api/admin/entities", adminGuard, h)
 | PATCH | `{name}/{id}` | `Update` |
 | DELETE | `{name}/{id}` | `Delete` |
 
-The core knows no router. `editrig.Handler` has one method per route, and each takes its route parameters explicitly — `h.Load(w, r, name, id)`, `h.Options(w, r, name, field)` — so any mux mounts it in six lines by reading the params its own way; `router/erstd` is the shortest example. `guard` (a `func(http.Handler) http.Handler`, may be nil) wraps every route: put the admin check there and the audit wrapper around the writing half, `Create`, `Update` and `Delete`, if it needs to be narrower.
+`guard` (a `func(http.Handler) http.Handler`, may be nil) wraps every route the same way. That is all `Register` can express: it decides the path shape and wraps reads and writes identically. Both decisions belong to the application, so the **canonical way to mount is to call the `Handler` methods yourself**. The core knows no router: each method takes its route parameters explicitly — `h.Load(w, r, name, id)`, `h.Options(w, r, name, field)` — and reads nothing from the URL, so any mux mounts it in six lines by extracting the params its own way. Use `Register` when the default shape and a uniform guard are exactly what you need; write the six lines when they are not, for example a client that expects an `entity` segment between the name and the id, or an audit wrapper that must sit around writes only:
+
+```go
+p := chi.URLParam
+r.Route("/api/admin/entities", func(r chi.Router) {
+    r.Use(adminGuard)
+    r.Get("/{name}/schema", func(w http.ResponseWriter, r *http.Request) {
+        h.Schema(w, r, p(r, "name"))
+    })
+    r.Get("/{name}/options/{field}", func(w http.ResponseWriter, r *http.Request) {
+        h.Options(w, r, p(r, "name"), p(r, "field"))
+    })
+    r.Get("/{name}/entity/{id}", func(w http.ResponseWriter, r *http.Request) {
+        h.Load(w, r, p(r, "name"), p(r, "id"))
+    })
+    r.Group(func(r chi.Router) {
+        r.Use(audit.MountWrite) // the application's: actor check, journal row after a 2xx
+        r.Post("/{name}/entity", func(w http.ResponseWriter, r *http.Request) {
+            h.Create(w, r, p(r, "name"))
+        })
+        r.Patch("/{name}/entity/{id}", func(w http.ResponseWriter, r *http.Request) {
+            h.Update(w, r, p(r, "name"), p(r, "id"))
+        })
+        r.Delete("/{name}/entity/{id}", func(w http.ResponseWriter, r *http.Request) {
+            h.Delete(w, r, p(r, "name"), p(r, "id"))
+        })
+    })
+})
+```
+
+The path shape is the client's contract, not the library's; the only thing the library fixes is that `Schema`, `Load` and `Options` are the reading half and `Create`, `Update` and `Delete` the writing half.
 
 `copyFor` and the logger may be `nil`: a nil `Copy` yields `PlainCatalog{}` (keys rendered as-is, no localization), a nil logger means `slog.Default()`.
 

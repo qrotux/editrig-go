@@ -19,9 +19,11 @@
 // HTTP, schema, validation, read-only strip, registry.
 //
 // THE ENGINE KNOWS NO ROUTER: Handler's methods take their route parameters
-// explicitly (Load(w, r, name, id)) and read nothing from the URL. Mounting is
-// router/erchi's or router/erstd's job, or six lines on any mux; route
-// topology and guard wrapping stay the caller's. Configuration is per Handler
+// explicitly (Load(w, r, name, id)) and read nothing from the URL. The
+// canonical mount is six routes on the caller's own mux, each calling one
+// method: path shape and per-route wrapping (guards, audit around writes)
+// are the application's. router/erchi and router/erstd are reference mounts
+// for the default shape only. Configuration is per Handler
 // through HandlerOption values: the unknown-field policy and the request body
 // limits.
 //

@@ -1,4 +1,7 @@
-// Package erchi mounts an editrig.Handler on a chi router.
+// Package erchi mounts an editrig.Handler on a chi router in the default URL
+// shape. It is a reference mount, not the canonical one: an application whose
+// client expects other paths, or whose writes need their own wrapping, calls
+// the Handler methods from its own routes instead (see README, Wiring).
 package erchi
 
 import (
@@ -11,7 +14,7 @@ import (
 
 // Register mounts GET base/{name}/schema, GET base/{name}/options/{field},
 // GET base/{name}/{id}, POST base/{name}, PATCH base/{name}/{id} and
-// DELETE base/{name}/{id}; guard may be nil.
+// DELETE base/{name}/{id}; guard may be nil and wraps every route alike.
 func Register(r chi.Router, base string, guard func(http.Handler) http.Handler, h *editrig.Handler) {
 	if guard == nil {
 		guard = func(next http.Handler) http.Handler { return next }
