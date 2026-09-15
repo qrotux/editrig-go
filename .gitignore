@@ -1,0 +1,10 @@
+*.test
+*.out
+
+.env
+.env.*
+.DS_Store
+.idea/
+.vscode/
+.claude/
+.superpowers/
